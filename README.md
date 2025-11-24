@@ -1,2 +1,2 @@
 # OOP-Semestral-project
-Sndoval, Emmanuel Brian I.
+Real estate app
