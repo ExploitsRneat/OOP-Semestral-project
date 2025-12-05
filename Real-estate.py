@@ -198,7 +198,7 @@ class RoleSelectionDialog(QtWidgets.QDialog):
         QLabel#selectionTitle { 
             font-size: 16px; 
             font-weight: 500; 
-            /* 💡 Updated to white text as requested */
+            /* White text for visibility */
             color: #FFFFFF; 
         }
         QPushButton#selectionBuyerBtn, QPushButton#selectionAgentBtn { 
@@ -796,6 +796,7 @@ class Ui_MainWindow(object):
             QtWidgets.QMessageBox.warning(None, 'Error', 'Please select a property to edit.')
             return
 
+        # Restrict edit to agent's own properties or unassigned properties (if they assigned themselves)
         agent_name = self.selected_property.get('agent', '').lower()
         if agent_name and agent_name != self.agent_username.lower():
              QtWidgets.QMessageBox.warning(None, 'Unauthorized', 'You can only edit your own listings.')
@@ -824,6 +825,7 @@ class Ui_MainWindow(object):
             QtWidgets.QMessageBox.warning(None, 'Error', 'Please select a property to delete.')
             return
 
+        # Restrict delete to agent's own properties
         agent_name = self.selected_property.get('agent', '').lower()
         if agent_name and agent_name != self.agent_username.lower():
              QtWidgets.QMessageBox.warning(None, 'Unauthorized', 'You can only delete your own listings.')
@@ -846,23 +848,26 @@ class Ui_MainWindow(object):
             self.update_sidebar_listings()
             QtWidgets.QMessageBox.information(None, 'Deleted', 'Listing successfully deleted! (Temporary deletion)')
 
-    # --- Filtering and View Logic (Includes Advanced Filters) ---
+    # --- Filtering and View Logic (Property visibility is now full for all roles) ---
 
     def update_sidebar_listings(self):
-        """Clears and rebuilds the sidebar based on the view mode (Agent or Buyer)."""
-        displayed_properties = []
-        all_properties = self.properties
+        """
+        Clears and rebuilds the sidebar listings.
+        
+        NOTE: The feature to restrict listings based on agent login has been removed.
+        All properties are displayed for both Agent and Buyer views.
+        """
+        displayed_properties = self.properties # Always show all properties
 
-        if self.is_agent_logged_in:
-            agent_name = self.agent_username.lower()
-            for p in all_properties:
-                prop_agent = p.get('agent', '').lower()
-                # Agent View: Show only their listings OR unassigned listings
-                if prop_agent == agent_name or not prop_agent:
-                    displayed_properties.append(p)
-        else:
-            # Buyer View: Show all properties
-            displayed_properties = all_properties
+        # For the original restricted feature:
+        # if self.is_agent_logged_in:
+        #     agent_name = self.agent_username.lower()
+        #     for p in all_properties:
+        #         prop_agent = p.get('agent', '').lower()
+        #         if prop_agent == agent_name or not prop_agent:
+        #             displayed_properties.append(p)
+        # else:
+        #     displayed_properties = all_properties
             
         for i in reversed(range(self.verticalLayout_sidebar.count())): 
             widget = self.verticalLayout_sidebar.itemAt(i).widget()
@@ -873,7 +878,7 @@ class Ui_MainWindow(object):
         self.card_widgets.clear()
         
         if not displayed_properties:
-            msg = QtWidgets.QLabel("No listings match your criteria or agent view.", self.scrollAreaWidgetContents)
+            msg = QtWidgets.QLabel("No listings available.", self.scrollAreaWidgetContents)
             msg.setObjectName('noResultsLabel')
             self.verticalLayout_sidebar.addWidget(msg, alignment=QtCore.Qt.AlignCenter)
         else:
@@ -937,7 +942,7 @@ class Ui_MainWindow(object):
             
         self.update_sidebar_listings() 
         
-        QtWidgets.QMessageBox.information(None, 'Agent Login', f'Welcome, {username}! Showing your assigned listings.')
+        QtWidgets.QMessageBox.information(None, 'Agent Login', f'Welcome, {username}! All listings are now visible.')
 
     def on_agent_logout(self):
         QtWidgets.QMessageBox.information(None, 'Agent Logout', 'Logging out. Returning to Buyer View.')
