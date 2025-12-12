@@ -1,5 +1,4 @@
-# Improved auth.py using full CustomTkinter windows instead of tkinter dialogs
-# Styled to match your Ctk design (“do not judge a book by its cover” aesthetic)
+#Full CustomTkinter windows instead of tkinter dialogs
 
 import customtkinter as ctk
 from tkinter import messagebox
