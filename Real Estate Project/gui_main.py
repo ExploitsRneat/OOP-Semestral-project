@@ -1,5 +1,4 @@
-# Fixed and cleaned gui_main.py
-# Mode C: Buyer is default (no login). Agent can log in. Button switches role.
+#Agent can log in. Button switches role.
 
 import customtkinter as ctk
 from tkinter import messagebox, filedialog, simpledialog
