@@ -1,10 +1,9 @@
-#Agent can log in. Button switches role.
-
 import customtkinter as ctk
 from tkinter import messagebox, filedialog, simpledialog
 from PIL import Image, ImageTk
 import io, os
 
+'''
 class MainGUI(ctk.CTk):
     def __init__(self, db_interface):
         super().__init__()
@@ -12,7 +11,16 @@ class MainGUI(ctk.CTk):
         self.title("Real Estate Portal")
         self.geometry("1200x800")
         self.configure(fg_color="#0F172A")
-        self.current_mode = "buyer"  # buyer mode by default
+        self.current_mode = "buyer"
+        self.build_ui()
+'''
+
+class MainGUI(ctk.CTkFrame):
+    def __init__(self, master, db_interface):
+        super().__init__(master, fg_color="#0F172A")
+        self.db = db_interface
+        self.current_mode = "buyer"
+        self.pack(fill="both", expand=True)
         self.build_ui()
 
     def build_ui(self):
@@ -22,15 +30,12 @@ class MainGUI(ctk.CTk):
         ctk.CTkLabel(top, text="🏠", font=ctk.CTkFont(size=18)).pack(side="left", padx=12, pady=10)
         ctk.CTkLabel(top, text="Real Estate Portal", font=ctk.CTkFont(size=18, weight="bold")).pack(side="left", padx=6)
 
-        # ONE SWITCH BUTTON
-        self.switch_btn = ctk.CTkButton(top, text="Agent Login", command=self.on_switch_role)
+        self.switch_btn = ctk.CTkButton(top, text="Login", command=self.on_switch_role)
         self.switch_btn.pack(side="right", padx=8, pady=8)
 
-        # Main containers
         content = ctk.CTkFrame(self)
         content.pack(fill="both", expand=True, padx=12, pady=12)
 
-        # Left list panel
         left = ctk.CTkFrame(content, width=360, fg_color="#0F172A")
         left.pack(side="left", fill="y", padx=(0, 12))
 
@@ -38,7 +43,6 @@ class MainGUI(ctk.CTk):
         self.list_frame.pack(fill="both", expand=True, padx=6, pady=6)
         self.card_widgets = []
 
-        # Right details panel
         right = ctk.CTkFrame(content, fg_color="#0F172A")
         right.pack(side="left", fill="both", expand=True)
 
@@ -48,20 +52,16 @@ class MainGUI(ctk.CTk):
         self.details_title = ctk.CTkLabel(right, text="Select a property from the list.", font=ctk.CTkFont(size=16), wraplength=480)
         self.details_title.pack(pady=6)
 
-        # NEW: Details text area
         self.details_info = ctk.CTkLabel(right, text="", justify="left", anchor="nw", wraplength=480)
         self.details_info.pack(pady=10)
 
-        # Agent action buttons (hidden in buyer mode)
         self.action_frame = ctk.CTkFrame(right)
         self.add_btn = ctk.CTkButton(self.action_frame, text="➕ Add New Property", command=self.on_add_property)
         self.add_btn.pack(side="left", padx=6)
         self.action_frame.pack_forget()
 
-        # Load list
         self.refresh_list()
 
-    # ----------------------- REFRESH PROPERTY LIST ----------------------
     def refresh_list(self):
         props = self.db.fetch_all_properties()
 
@@ -95,16 +95,12 @@ class MainGUI(ctk.CTk):
             else:
                 thumb.configure(text=p.get("title", "")[:2].upper())
 
-            def make_cb(item=p):
-                return lambda e=None: self.on_card_click(item)
-
-            frame.bind("<Button-1>", make_cb())
+            frame.bind("<Button-1>", lambda e, x=p: self.on_card_click(x))
             for child in frame.winfo_children():
-                child.bind("<Button-1>", make_cb())
+                child.bind("<Button-1>", lambda e, x=p: self.on_card_click(x))
 
             self.card_widgets.append(frame)
 
-    # --------------------- CARD CLICK DETAILS -----------------------
     def on_card_click(self, prop):
         self.details_title.configure(text=prop.get("title", ""))
 
@@ -121,19 +117,18 @@ class MainGUI(ctk.CTk):
         else:
             self.details_image.configure(text="No Image")
 
-        # Full information text
         info_text = f"""
 🏷 Property Type: {prop.get('property_type','')}
 📌 Sell Method: {prop.get('sell_method','')}
 💳 Payment Type: {prop.get('payment_type','')}
 
-💰 Price: {prop.get('price','')}
+💰 Price: $ {prop.get('price','')}
 
 🛏 Beds: {prop.get('beds',0)}
 🛁 Baths: {prop.get('baths',0)}
 
-📐 Size: {prop.get('size_sqm','')}
-📏 Land Width: {prop.get('land_width','')}
+📐 Size: {prop.get('size_sqm','')} sqm
+📏 Land Width: {prop.get('land_width','')} sqm
 
 📍 Address: {prop.get('address','')}
 🌆 City: {prop.get('city','')}
@@ -144,32 +139,36 @@ class MainGUI(ctk.CTk):
 
         self.details_info.configure(text=info_text)
 
-    # --------------------- SWITCH ROLE BUTTON -----------------------
     def on_switch_role(self):
-        # If currently buyer → agent login
         if self.current_mode == "buyer":
-            from auth import LoginRegisterHelper
-            auth = LoginRegisterHelper(self.db, self)
+            # Open unified login Toplevel
+            from auth import UnifiedLoginFrame
 
-            ok = auth.login_agent()
-            if not ok:
-                return
+            win = ctk.CTkToplevel(self)
+            win.title("Login")
+            win.geometry("420x240")
+            win.grab_set()
 
-            # Switch to agent mode
-            self.current_mode = "agent"
-            self.switch_btn.configure(text=f"Logout ({self.db.current_user.get('display_name')})")
-            self.action_frame.pack(pady=8)
+            def on_login(user):
+                # Set mode according to role
+                self.db.current_user = user
+                self.current_mode = user.get("role", "buyer")
+                self.switch_btn.configure(text=f"Logout ({self.db.current_user.get('display_name') or self.db.current_user.get('username')})")
+                if self.current_mode == "agent":
+                    self.action_frame.pack(pady=8)
+                else:
+                    self.action_frame.pack_forget()
+
+            UnifiedLoginFrame(win, self.db, on_login)
+            win.wait_window()
             return
 
-        # If currently agent → switch to buyer mode (logout)
-        if self.current_mode == "agent":
-            self.db.current_user = None
-            self.current_mode = "buyer"
-            self.switch_btn.configure(text="Agent Login")
-            self.action_frame.pack_forget()
-            messagebox.showinfo("Logout", "You are now in Buyer mode.")
+        self.db.current_user = None
+        self.current_mode = "buyer"
+        self.switch_btn.configure(text="Login")
+        self.action_frame.pack_forget()
+        messagebox.showinfo("Logout", "You are now in Buyer mode.")
 
-    # --------------------- ADD PROPERTY (Agent only) -----------------------
     def on_add_property(self):
         if self.current_mode != "agent":
             messagebox.showerror("Access Denied", "Only agents can add properties.")
@@ -180,20 +179,7 @@ class MainGUI(ctk.CTk):
             return
 
         file = filedialog.askopenfilename(filetypes=[("Images", "*.png;*.jpg;*.jpeg;*.webp;*.bmp")])
-        blob = None
-        mime = None
-        if file:
-            with open(file, "rb") as f:
-                blob = f.read()
-            ext = os.path.splitext(file)[1].lower()
-            if ext in (".jpg", ".jpeg"):
-                mime = "image/jpeg"
-            elif ext == ".png":
-                mime = "image/png"
-            elif ext == ".webp":
-                mime = "image/webp"
-            else:
-                mime = "application/octet-stream"
+        blob = open(file, "rb").read() if file else None
 
         prop = {
             "title": title,
@@ -209,7 +195,7 @@ class MainGUI(ctk.CTk):
             "city": "",
             "description": "",
             "image_blob": blob,
-            "image_mime": mime,
+            "image_mime": "image/jpeg",
         }
 
         self.db.insert_property(prop)
